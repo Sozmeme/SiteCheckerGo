@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,7 +12,7 @@ import (
 	"time"
 
 	"github.com/likexian/whois"
-	"github.com/likexian/whois-parser"
+	whoisparser "github.com/likexian/whois-parser"
 	"github.com/xrash/smetrics"
 )
 
@@ -26,10 +25,6 @@ func (uc URLchecker) Check(checkURL string) core.Report {
 	siteName := getSiteName(hostname)
 	createdAt, err := getCreationDate(hostname)
 	pageRank, rankerr := getPageRank(hostname)
-
-	if rankerr != nil {
-		log.Fatal(rankerr)
-	}
 
 	// Проверка даты создания сайта
 	if err != nil || createdAt.IsZero() {
@@ -44,16 +39,20 @@ func (uc URLchecker) Check(checkURL string) core.Report {
 	}
 
 	// Проверка PageRank
-	if pageRank < 4 {
-		report.Text += fmt.Sprintf("- Низкий PageRank по данным CommonCrawl - \"%d/10\"\n", pageRank)
-		report.Metric *= 0.3
+	if rankerr != nil {
+		report.Text += "- PageRank не доступен\n"
 	} else {
-		report.Text += fmt.Sprintf("- PageRank по данным CommonCrawl - \"%d/10\"\n", pageRank)
+		if pageRank < 4 {
+			report.Text += fmt.Sprintf("- Низкий PageRank по данным CommonCrawl - \"%d/10\"\n", pageRank)
+			report.Metric *= 0.3
+		} else {
+			report.Text += fmt.Sprintf("- PageRank по данным CommonCrawl - \"%d/10\"\n", pageRank)
+		}
 	}
 
 	// Проверка на количество поддоменов
 	if strings.Count(hostname, ".") > 2 {
-		report.Text += fmt.Sprintf("- Большое количество поддоменов\n")
+		report.Text += "- Большое количество поддоменов\n"
 		report.Metric *= 0.5
 	}
 
@@ -148,7 +147,7 @@ func getPageRank(hostname string) (int, error) {
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("API-OPR", config.APIKey)
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err

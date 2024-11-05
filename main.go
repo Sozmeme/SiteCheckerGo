@@ -1,12 +1,12 @@
 package main
 
 import (
-	"sitechecker/src/urlcheck"
+	"sitechecker/src/seccheck"
 	"fmt"
 )
 
 func main() {
-	checker := urlcheck.URLchecker{}
+	checker := seccheck.SecChecker{}
 	report := checker.Check("https://itmo.ru")
 	fmt.Print(report.Text)
 	
