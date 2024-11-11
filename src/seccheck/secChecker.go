@@ -12,7 +12,7 @@ import (
 
 type SecChecker struct{}
 
-func (p *SecChecker) Check(url string) core.Report {
+func (p SecChecker) Check(url string) core.Report {
 	report := core.Report{
 		Text:   "",
 		Metric: 1.0,

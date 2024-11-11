@@ -1,14 +1,25 @@
 package main
 
 import (
-	"sitechecker/src/seccheck"
 	"fmt"
+	"sitechecker/src/core"
+	"sitechecker/src/seccheck"
+	"sitechecker/src/sslcheck"
+	"sitechecker/src/urlcheck"
 )
 
-func main() {
-	checker := seccheck.SecChecker{}
-	report := checker.Check("https://itmo.ru")
-	fmt.Print(report.Text)
-	
+func NewMasterChecker() core.Checker {
+	return &core.MasterChecker{
+		Judges: []core.Checker{
+			sslcheck.SSLchecker{},
+			urlcheck.URLchecker{},
+			seccheck.SecChecker{},
+		},
+	}
+}
 
+func main() {
+	checker := NewMasterChecker()
+	report := checker.Check("https://google.com")
+	fmt.Print(report.Text)
 }

@@ -25,6 +25,7 @@ func (uc URLchecker) Check(checkURL string) core.Report {
 	siteName := getSiteName(hostname)
 	createdAt, err := getCreationDate(hostname)
 	pageRank, rankerr := getPageRank(hostname)
+	
 
 	// Проверка даты создания сайта
 	if err != nil || createdAt.IsZero() {

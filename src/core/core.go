@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -14,14 +15,14 @@ type Report struct {
 }
 
 type Checker interface {
-	check(url string) Report
+	Check(url string) Report
 }
 
 type MasterChecker struct {
-	judges []Checker
+	Judges []Checker
 }
 
-func (ma *MasterChecker) Check(checkURL string) Report {
+func (ma MasterChecker) Check(checkURL string) Report {
 	report := Report{Text: "", Metric: 1.0}
 
 	parsedURL, err := url.Parse(checkURL)
@@ -47,6 +48,7 @@ func (ma *MasterChecker) Check(checkURL string) Report {
 	}
 	defer resp.Body.Close()
 
+	// Обработка редиректа
 	if len(resp.Request.URL.String()) > 0 && resp.Request.URL.String() != checkURL {
 		newURL := resp.Request.URL.String()
 		newHostname := strings.TrimPrefix(resp.Request.URL.Hostname(), "www.")
@@ -57,14 +59,40 @@ func (ma *MasterChecker) Check(checkURL string) Report {
 		}
 	}
 
+	// Используем WaitGroup и Mutex для синхронизации доступа к report
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 	totalMetric := report.Metric
-	for _, judge := range ma.judges {
-		judgeReport := judge.check(checkURL)
-		totalMetric += judgeReport.Metric
-		report.Text += fmt.Sprintf("[+] Result from %T:\n%s", judge, judgeReport.Text)
+	validResults := 1 // Начальное значение, чтобы учитывать начальный report.Metric
+
+	// Запускаем проверки параллельно
+	for _, judge := range ma.Judges {
+		wg.Add(1)
+		go func(j Checker) {
+			defer wg.Done()
+
+			// Запускаем проверку с учетом контекста
+			judgeReport := j.Check(checkURL)
+
+			// Блокируем доступ к report на время записи результата
+			mu.Lock()
+			defer mu.Unlock()
+
+			if judgeReport.Metric > 0 {
+				totalMetric += judgeReport.Metric
+				report.Text += fmt.Sprintf("[+] Result from %T:\n%s", j, judgeReport.Text)
+				validResults++
+			} else {
+				report.Text += fmt.Sprintf("[!] Error in %T check: %s\n", j, judgeReport.Text)
+			}
+		}(judge)
 	}
 
-	report.Metric = round(totalMetric / float64(len(ma.judges)+1))
+	// Ожидаем завершения всех горутин
+	wg.Wait()
+
+	// Вычисляем итоговую метрику
+	report.Metric = round(totalMetric / float64(validResults))
 	report.Text += fmt.Sprintf("[!] Final trust score: %.2f - ", report.Metric)
 	if report.Metric >= 0.7 {
 		report.Text += "The site is safe to visit"
