@@ -63,7 +63,7 @@ func (ma MasterChecker) Check(checkURL string) Report {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	totalMetric := report.Metric
-	validResults := 1 // Начальное значение, чтобы учитывать начальный report.Metric
+	validResults := 1
 
 	// Запускаем проверки параллельно
 	for _, judge := range ma.Judges {
@@ -71,10 +71,8 @@ func (ma MasterChecker) Check(checkURL string) Report {
 		go func(j Checker) {
 			defer wg.Done()
 
-			// Запускаем проверку с учетом контекста
 			judgeReport := j.Check(checkURL)
 
-			// Блокируем доступ к report на время записи результата
 			mu.Lock()
 			defer mu.Unlock()
 
