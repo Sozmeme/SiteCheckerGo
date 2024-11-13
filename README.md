@@ -1,5 +1,5 @@
 # SiteChecker
-This app checks site via URL and gives a report about safey usage of this site.|
+This app checks site via URL and gives a report about safey usage of this site.
 
 It analyzes:
 - SSL certificate
